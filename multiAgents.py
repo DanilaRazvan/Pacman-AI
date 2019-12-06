@@ -43,11 +43,9 @@ class ReflexAgent(Agent):
         legalMoves = gameState.getLegalActions()
 
         # Choose one of the best actions
-        scores = [self.evaluationFunction(
-            gameState, action) for action in legalMoves]
+        scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
         bestScore = max(scores)
-        bestIndices = [index for index in range(
-            len(scores)) if scores[index] == bestScore]
+        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
         # Pick randomly among the best
         chosenIndex = random.choice(bestIndices)
 
@@ -99,45 +97,6 @@ class ReflexAgent(Agent):
 
         return distance
 
-        newPos = currentGameState.getPacmanPosition()
-        newFood = currentGameState.getFood()
-        newGhostStates = currentGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
-
-        foodList = newFood.asList()
-
-        foodDistance = [0]
-        for pos in foodList:
-            foodDistance.append(manhattanDistance(newPos, pos))
-
-        ghostPos = []
-        for ghost in newGhostStates:
-            ghostPos.append(ghost.getPosition())
-
-        ghostDistance = [0]
-        for pos in ghostPos:
-            ghostDistance.append(manhattanDistance(newPos, pos))
-
-        nrOfPowerPellets = len(currentGameState.getCapsules())
-
-        score = 0
-        numberOfNoFoods = len(newFood.asList(False))
-        sumScaredTimes = sum(newScaredTimes)
-        sumGhostDistance = sum(ghostDistance)
-        reciprocalFoodDistance = 0
-        if sum(foodDistance) > 0:
-            reciprocalFoodDistance = 1.0 / sum(foodDistance)
-
-        score += currentGameState.getScore() + reciprocalFoodDistance + numberOfNoFoods
-
-        if sumScaredTimes > 0:
-            score += sumScaredTimes + \
-                (-1 * nrOfPowerPellets) + (-1 * sumGhostDistance)
-        else:
-            score += sumGhostDistance + nrOfPowerPellets
-
-        return score
-
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -165,7 +124,7 @@ class MultiAgentSearchAgent(Agent):
       is another abstract class.
     """
 
-    def __init__(self, evalFn='scoreEvaluationFunction', depth='2'):
+    def __init__(self, evalFn='betterEvaluationFunction', depth='2'):
         self.index = 0  # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
@@ -269,7 +228,7 @@ class NegamaxAgent(MultiAgentSearchAgent):
             move = ["", -float("Inf")]
 
             if not actions:
-                return self.evaluationFunction(gameState)
+                return player * self.evaluationFunction(gameState)
 
             for action in actions:
                 currState = gameState.generateSuccessor(agentcounter, action)
@@ -282,14 +241,57 @@ class NegamaxAgent(MultiAgentSearchAgent):
 
                 if newVal > move[1]:
                     move = [action, newVal]
-            
-            return move
 
+            return move
 
         action = negamax(gameState, 0, 0)
         return action[0]
-        
-        # return super().getAction(state)
+
+
+class ABNegamaxAgent(MultiAgentSearchAgent):
+
+    def getAction(self, gameState):
+
+        def negamaxAlphaBeta(gameState, depth, agentcounter, a, b):
+            player = 1 if agentcounter == 0 else -1
+
+            if(depth == self.depth or gameState.isWin() or gameState.isLose()):
+                return player * self.evaluationFunction(gameState)
+
+            if(agentcounter >= gameState.getNumAgents()):
+                depth += 1
+                agentcounter = 0
+
+            actions = gameState.getLegalActions(agentcounter)
+            move = ["", -float("inf")]
+
+            if not actions:
+                return player * self.evaluationFunction(gameState)
+
+            for action in actions:
+                currState = gameState.generateSuccessor(agentcounter, action)
+                current = negamaxAlphaBeta(
+                    currState, depth, agentcounter + 1, -b, -a)
+
+                if type(current) is not list:
+                    newVal = -current
+                else:
+                    newVal = -current[1]
+
+                if newVal > move[1]:
+                    move = [action, newVal]
+
+                if (newVal > a):
+                    a = newVal
+
+                if a >= b:
+                    return [action, a]
+
+            return move
+
+        action = negamaxAlphaBeta(
+            gameState, 0, 0, a=-float("inf"), b=float("Inf"))
+        return action[0]
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
